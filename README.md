@@ -52,13 +52,17 @@ Pick whichever route suits you; all of them write the same setting.
 choose **Set marker interval…**. Pick 100, 250, 500 or 1000 words, or
 **Custom…** to type any number. The same menu hides and shows the markers.
 
-**From the Command Palette.** `Cmd+Shift+P` (`Ctrl+Shift+P` on Windows/Linux),
+**From the Command Palette.**
+<br><kbd><b>Cmd</b></kbd>+<kbd><b>Shift</b></kbd>+<kbd><b>P</b></kbd> (macOS)
+/<br><kbd><b>Ctrl</b></kbd>+<kbd><b>Shift</b></kbd>+<kbd><b>P</b></kbd> (Windows/Linux),
 then:
 
 - **TeX Word Count: Set Progress Marker Interval** — the same picker as above.
 - **TeX Word Count: Toggle Progress Markers** — hide or show them.
 
-**From the Settings editor.** `Cmd+,` (`Ctrl+,`), search for `TeX Word Count`,
+**From the Settings editor.**
+<br><kbd><b>Cmd</b></kbd>+<kbd><b>,</b></kbd> (macOS)
+/<br><kbd><b>Ctrl</b></kbd>+<kbd><b>,</b></kbd> (Windows/Linux),<br> search for `TeX Word Count`,
 and edit **Progress Markers: Interval**.
 
 **From `settings.json`.** Useful for a per-project value: put this in
