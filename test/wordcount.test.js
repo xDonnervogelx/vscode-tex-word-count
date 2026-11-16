@@ -71,6 +71,23 @@ test('ignores verbatim environments', () => {
   assert.strictEqual(countWords(src), 2);
 });
 
+const mathEnvironmentNames = [
+  'equation', 'align', 'gather', 'multline', 'flalign', 'alignat',
+  'eqnarray', 'displaymath', 'math',
+];
+
+for (const environmentName of mathEnvironmentNames) {
+  test(`ignores ${environmentName} environments`, () => {
+    const latex = `\\begin{${environmentName}} a &= b + c \\\\ d &= e + f \\end{${environmentName}}`;
+    assert.strictEqual(countWords(latex), 0);
+  });
+
+  test(`keeps the words around ${environmentName} environments`, () => {
+    const latex = `before \\begin{${environmentName}} a &= b + c \\\\ d &= e + f \\end{${environmentName}} after`;
+    assert.strictEqual(countWords(latex), 2);
+  });
+}
+
 test('handles a small document', () => {
   const src = [
     '\\documentclass{article}',

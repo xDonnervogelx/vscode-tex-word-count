@@ -30,6 +30,22 @@ const DROP_WITH_ARG_RE = new RegExp(
 );
 
 /**
+ * Mathematical environments whose whole contents are not prose. They are
+ * removed together with their `\begin` and `\end` commands. The starred form
+ * of each name (such as `align*`) is matched as well.
+ */
+const MATH_ENVIRONMENTS = [
+  'equation', 'align', 'gather', 'multline', 'flalign', 'alignat',
+  'eqnarray', 'displaymath', 'math',
+];
+
+const MATH_ENVIRONMENT_RE = new RegExp(
+  '\\\\begin\\{(' + MATH_ENVIRONMENTS.join('|') + ')(\\*?)\\}[\\s\\S]*?\\\\end\\{\\1\\2\\}',
+  'g'
+);
+
+
+/**
  * Strips a LaTeX comment from a single line.
  *
  * A `%` begins a comment that runs to the end of the line, unless it is
@@ -110,6 +126,8 @@ function cleanLatex(text, options = {}) {
     /\\begin\{(verbatim\*?|lstlisting|minted|Verbatim)\}[\s\S]*?\\end\{\1\}/g,
     gap
   );
+
+  cleaned = cleaned.replace(MATH_ENVIRONMENT_RE, gap);
 
   // 3. Remove display and inline mathematics.
   cleaned = cleaned.replace(/\$\$[\s\S]*?\$\$/g, gap);
