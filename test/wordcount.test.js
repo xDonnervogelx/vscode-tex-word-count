@@ -103,6 +103,11 @@ test('ignores the column argument of alignat', () => {
   assert.strictEqual(countWords(latex), 2);
 });
 
+test('keeps the text after a math environment that is quoted inside verbatim', () => {
+  const latex = 'text \\begin{verbatim} \\begin{equation} \\end{verbatim} more \\begin{equation} x \\end{equation} end';
+  assert.strictEqual(countWords(latex), 3);
+});
+
 test('handles a small document', () => {
   const src = [
     '\\documentclass{article}',
