@@ -1,5 +1,9 @@
 # Change Log
 
+## PR-Unreleased
+
+- Mathematical environments (`equation`, `align`, `gather`, `multline`, `flalign`, `alignat`, `eqnarray`, `displaymath` and `math`, including their starred forms) are now ignored in the word count.
+
 ## 0.4.2
 
 - Changing a setting from the status bar menu no longer fails with a bare

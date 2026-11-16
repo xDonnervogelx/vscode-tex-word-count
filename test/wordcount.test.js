@@ -86,7 +86,22 @@ for (const environmentName of mathEnvironmentNames) {
     const latex = `before \\begin{${environmentName}} a &= b + c \\\\ d &= e + f \\end{${environmentName}} after`;
     assert.strictEqual(countWords(latex), 2);
   });
+
+  test(`ignores ${environmentName}* starred environments`, () => {
+    const latex = `\\begin{${environmentName}*} a &= b + c \\\\ d &= e + f \\end{${environmentName}*}`;
+    assert.strictEqual(countWords(latex), 0);
+  });
+
+  test(`keeps the words around ${environmentName}* starred environments`, () => {
+    const latex = `before \\begin{${environmentName}*} a &= b + c \\\\ d &= e + f \\end{${environmentName}*} after`;
+    assert.strictEqual(countWords(latex), 2);
+  });
 }
+
+test('ignores the column argument of alignat', () => {
+  const latex = 'before \\begin{alignat}{2} a &= b + c \\\\ d &= e + f \\end{alignat} after';
+  assert.strictEqual(countWords(latex), 2);
+});
 
 test('handles a small document', () => {
   const src = [
@@ -167,6 +182,20 @@ test('preserving offsets does not change the word count', () => {
       /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu
     ) || [];
   assert.deepStrictEqual(padded, plain);
+});
+
+test('preserving offsets keeps words in place after a math environment', () => {
+  const src = 'Alpha \\begin{equation} E = mc^2 \\end{equation} beta';
+  const padded = cleanLatex(src, { preserveOffsets: true });
+
+  assert.strictEqual(padded.length, src.length);
+  for (const word of ['Alpha', 'beta']) {
+    assert.strictEqual(
+      padded.indexOf(word),
+      src.indexOf(word),
+      `"${word}" moved`
+    );
+  }
 });
 
 test('preserving offsets keeps every word at its original position', () => {
