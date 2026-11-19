@@ -93,7 +93,7 @@ test('ignores parencite command key', () => {
   assert.strictEqual(countWords('\\parencite{smith2020} text'), 1);
 });
 
-for (const commandName of ['parencite', 'textcite', 'autocite', 'footcite']) {
+for (const commandName of ['parencite', 'textcite', 'autocite', 'footcite', 'smartcite']) {
   test(`ignores the key of ${commandName}`, () => {
     const latex = `\\${commandName}{smith2020} text`;
     assert.strictEqual(countWords(latex), 1);

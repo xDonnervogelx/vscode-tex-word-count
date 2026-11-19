@@ -2,7 +2,7 @@
 
 ### PR-Unreleased
 
-- Keys of biblatex citation commands (`\parencite`, `\textcite`, `\autocite`, `\footcite`) are no longer counted as words, and commands with several optional arguments (such as `\parencite[cf.][35]{key}`) are now removed completely.
+- Keys of biblatex citation commands (`\parencite`, `\textcite`, `\autocite`, `\footcite`, `\smartcite`) are no longer counted as words, and commands with several optional arguments (such as `\parencite[cf.][35]{key}`) are now removed completely.
 
 ## 0.4.2
 
