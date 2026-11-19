@@ -25,7 +25,7 @@ const DROP_WITH_ARG = [
 ];
 
 const DROP_WITH_ARG_RE = new RegExp(
-  '\\\\(?:' + DROP_WITH_ARG.join('|') + ')\\*?\\s*(?:\\[[^\\]]*\\])?\\s*\\{[^{}]*\\}',
+  '\\\\(?:' + DROP_WITH_ARG.join('|') + ')\\*?\\s*(?:\\[[^\\]]*\\]\\s*)*\\{[^{}]*\\}',
   'g'
 );
 

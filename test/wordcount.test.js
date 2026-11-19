@@ -100,6 +100,10 @@ for (const commandName of ['parencite', 'textcite', 'autocite', 'footcite']) {
   });
 }
 
+test('ignores two optional arguments before a citation key', () => {
+  assert.strictEqual(countWords('\\parencite[cf.][35]{miller2020} text'), 1);
+});
+
 test('does not count package or class names', () => {
   assert.strictEqual(
     countWords('\\documentclass{article}\\usepackage{amsmath}text'),
