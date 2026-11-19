@@ -1,5 +1,9 @@
 # Change Log
 
+### PR-Unreleased
+
+- Keys of biblatex citation commands (`\parencite`, `\textcite`, `\autocite`, `\footcite`) are no longer counted as words, and commands with several optional arguments (such as `\parencite[cf.][35]{key}`) are now removed completely.
+
 ## 0.4.2
 
 - Changing a setting from the status bar menu no longer fails with a bare
