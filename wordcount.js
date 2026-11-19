@@ -14,7 +14,7 @@ const DROP_WITH_ARG = [
   'DeclareMathOperator', 'newtheorem', 'setcounter', 'setlength',
   // Cross-references and citations.
   'label', 'ref', 'eqref', 'pageref', 'cref', 'Cref', 'autoref', 'nameref',
-  'cite', 'citep', 'citet', 'citeauthor', 'citeyear', 'citealt', 'nocite',
+  'cite', 'citep', 'citet', 'citeauthor', 'citeyear', 'citealt', 'nocite', 'parencite', 'textcite', 'autocite', 'footcite', 'smartcite',
   // Inputs, bibliography and graphics.
   'input', 'include', 'includeonly', 'includegraphics', 'bibliography',
   'bibliographystyle', 'addbibresource', 'printbibliography',

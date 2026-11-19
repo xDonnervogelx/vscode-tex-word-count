@@ -89,6 +89,17 @@ test('ignores labels, refs and citations', () => {
   );
 });
 
+test('ignores parencite command key', () => {
+  assert.strictEqual(countWords('\\parencite{smith2020} text'), 1);
+});
+
+for (const commandName of ['parencite', 'textcite', 'autocite', 'footcite']) {
+  test(`ignores the key of ${commandName}`, () => {
+    const latex = `\\${commandName}{smith2020} text`;
+    assert.strictEqual(countWords(latex), 1);
+  });
+}
+
 test('does not count package or class names', () => {
   assert.strictEqual(
     countWords('\\documentclass{article}\\usepackage{amsmath}text'),
