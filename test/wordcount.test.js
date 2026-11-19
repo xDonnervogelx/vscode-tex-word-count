@@ -82,6 +82,10 @@ test('handles a small document', () => {
   assert.strictEqual(countWords(src), 5);
 });
 
+test('ignores the path of a subfile command', () => {
+  assert.strictEqual(countWords('\\subfile{chapters/a} text'), 1);
+});
+
 test('ignores labels, refs and citations', () => {
   assert.strictEqual(
     countWords('See \\ref{fig:one} in \\cite{smith2020} please'),

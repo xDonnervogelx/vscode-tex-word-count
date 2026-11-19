@@ -1,5 +1,9 @@
 # Change Log
 
+## PR-Unreleased
+
+- The path argument of `\subfile` is no longer counted as a word, in line with `\include` and `\input`.
+
 ## 0.4.2
 
 - Changing a setting from the status bar menu no longer fails with a bare

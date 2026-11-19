@@ -16,7 +16,7 @@ const DROP_WITH_ARG = [
   'label', 'ref', 'eqref', 'pageref', 'cref', 'Cref', 'autoref', 'nameref',
   'cite', 'citep', 'citet', 'citeauthor', 'citeyear', 'citealt', 'nocite',
   // Inputs, bibliography and graphics.
-  'input', 'include', 'includeonly', 'includegraphics', 'bibliography',
+  'input', 'include', 'subfile', 'includeonly', 'includegraphics', 'bibliography',
   'bibliographystyle', 'addbibresource', 'printbibliography',
   // Spacing, colours, links and setup.
   'hspace', 'vspace', 'usetikzlibrary', 'definecolor', 'geometry',
