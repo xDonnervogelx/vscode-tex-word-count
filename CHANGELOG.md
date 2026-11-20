@@ -1,5 +1,12 @@
 # Change Log
 
+## PR-Unreleased
+
+- The column specification of table environments is no longer counted as words. 
+  This covers `tabular`, `tabular*`, `tabularx`, `tabulary`, `longtable`, 
+  `xltabular` and `NiceTabular`, including nested braces such as `p{3cm}` and an 
+  optional position argument like `[t]`.
+
 ## 0.4.2
 
 - Changing a setting from the status bar menu no longer fails with a bare
