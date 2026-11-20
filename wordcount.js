@@ -67,6 +67,96 @@ function blank(match) {
 }
 
 /**
+ * Table environments whose first mandatory arguments are not text, mapped to
+ * the number of those arguments. For `\begin{tabular}{lcr}` that is the column
+ * specification, for `\begin{tabularx}{12cm}{XX}` the width and the columns.
+ */
+const TABLE_ENVIRONMENTS = {
+  tabular: 1,
+  'tabular*': 2,
+  tabularx: 2,
+  tabulary: 2,
+  longtable: 1,
+  xltabular: 2,
+  NiceTabular: 1,
+};
+
+const TABLE_BEGIN_RE = new RegExp(
+  '\\\\begin\\{(' +
+  Object.keys(TABLE_ENVIRONMENTS)
+    .map((name) => name.replace('*', '\\*'))
+    .join('|') +
+  ')\\}\\s*(?:\\[[^\\]]*\\]\\s*)?',
+  'g'
+);
+
+/**
+ * Finds the end of a braced group, including groups nested inside it, such as
+ * the `{3cm}` in `{|l|p{3cm}|}`. Escaped braces (`\{` and `\}`) are skipped.
+ *
+ * @param {string} text   The text to search in.
+ * @param {number} openingBraceIndex   The index of the opening brace.
+ * @returns {number}   The index just after the matching closing brace, or -1
+ *                     when the group is not closed.
+ */
+function findGroupEnd(text, openingBraceIndex) {
+  let depth = 0;
+  for (let index = openingBraceIndex; index < text.length; index++) {
+    const character = text[index];
+    if (character === '\\') {
+      index++;
+    } else if (character === '{') {
+      depth++;
+    } else if (character === '}') {
+      depth--;
+      if (depth === 0) {
+        return index + 1;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * Removes the beginning of a table environment together with the arguments
+ * that are not text, such as the column specification of `tabular`. An
+ * optional position argument like `[t]` is removed as well.
+ *
+ * @param {string} text   The LaTeX text to process.
+ * @param {string|function} gap   What the removed text is replaced with.
+ * @returns {string}
+ */
+function removeTableColumnSpecifications(text, gap) {
+  let result = '';
+  let copiedUpTo = 0;
+  TABLE_BEGIN_RE.lastIndex = 0;
+  let beginMatch;
+  while ((beginMatch = TABLE_BEGIN_RE.exec(text)) !== null) {
+    let removedUpTo = beginMatch.index + beginMatch[0].length;
+    for (let group = 0; group < TABLE_ENVIRONMENTS[beginMatch[1]]; group++) {
+      let braceIndex = removedUpTo;
+      while (/\s/.test(text[braceIndex] || '')) {
+        braceIndex++;
+      }
+      if (text[braceIndex] !== '{') {
+        break;
+      }
+      const groupEnd = findGroupEnd(text, braceIndex);
+      if (groupEnd === -1) {
+        break;
+      }
+      removedUpTo = groupEnd;
+    }
+    const removedText = text.slice(beginMatch.index, removedUpTo);
+    result += text.slice(copiedUpTo, beginMatch.index);
+    result += typeof gap === 'function' ? gap(removedText) : gap;
+    copiedUpTo = removedUpTo;
+    TABLE_BEGIN_RE.lastIndex = removedUpTo;
+  }
+  return result + text.slice(copiedUpTo);
+}
+
+/**
  * Reduces a piece of LaTeX to just its prose, removing comments, commands,
  * mathematics and verbatim blocks. This shared step backs both the word and
  * the character counts.
@@ -119,6 +209,7 @@ function cleanLatex(text, options = {}) {
 
   // 4. Remove non-text commands together with their braced argument
   //    (\usepackage{...}, \begin{...}, \label{...}, \cite{...}, …).
+  cleaned = removeTableColumnSpecifications(cleaned, gap);
   cleaned = cleaned.replace(DROP_WITH_ARG_RE, gap);
 
   // 5. Remove any remaining commands and their optional argument, keeping the
