@@ -7,6 +7,9 @@
   `xltabular` and `NiceTabular`, including nested braces such as `p{3cm}` and an 
   optional position argument like `[t]`.
 
+- The span, alignment and rule arguments of `\multicolumn`, `\multirow`, `\cmidrule` and `\cline` are no longer counted as words.
+  The text of a `\multicolumn` or `\multirow` cell is still counted.
+
 ## 0.4.2
 
 - Changing a setting from the status bar menu no longer fails with a bare
