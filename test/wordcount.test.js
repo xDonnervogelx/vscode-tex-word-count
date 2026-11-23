@@ -112,6 +112,27 @@ test('ignores nested braces in a column specification', () => {
   );
 });
 
+test('ignores the span arguments of a multicolumn', () => {
+  assert.strictEqual(
+    countWords('\\multicolumn{2}{c}{one two} three'),
+    3
+  );
+});
+
+test('ignores the span arguments of a multirow', () => {
+  assert.strictEqual(
+    countWords('\\multirow{2}{*}{one two} three'),
+    3
+  );
+});
+
+test('ignores the trim and range arguments of a cmidrule', () => {
+  assert.strictEqual(
+    countWords('\\cmidrule(lr){2-3} one'),
+    1
+  );
+});
+
 test('ignores verbatim environments', () => {
   const src = 'text \\begin{verbatim}\nlots of code here\n\\end{verbatim} more';
   assert.strictEqual(countWords(src), 2);

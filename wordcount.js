@@ -118,22 +118,43 @@ function findGroupEnd(text, openingBraceIndex) {
 }
 
 /**
- * Removes the beginning of a table environment together with the arguments
- * that are not text, such as the column specification of `tabular`. An
- * optional position argument like `[t]` is removed as well.
+ * Table commands whose leading arguments are not text, mapped to the number of
+ * braced groups to remove. For `\multicolumn{2}{c}{text}` the span and the
+ * alignment go, the text stays.
+ */
+const TABLE_COMMANDS = {
+  multicolumn: 2,
+  multirow: 2,
+  cmidrule: 1,
+  cline: 1,
+};
+
+const TABLE_COMMAND_RE = new RegExp(
+  '\\\\(' + Object.keys(TABLE_COMMANDS).join('|') + ')(?![a-zA-Z@])\\*?\\s*' +
+  '(?:\\[[^\\]]*\\]\\s*)?(?:\\([^)]*\\)\\s*)?',
+  'g'
+);
+
+/**
+ * Removes the beginning of a table environment or command together with the
+ * leading arguments that are not text, such as the column specification of
+ * `tabular` or the span of `\multicolumn`. Optional arguments directly after
+ * the names are removed as well, for example a `[t]`.
  *
  * @param {string} text   The LaTeX text to process.
+ * @param {RegExp} beginRe   Matches the beginning and captures the name in group 1.
+ * @param {Object<string, number>} groupCounts   The number of braced groups to remove per name.
  * @param {string|function} gap   What the removed text is replaced with.
  * @returns {string}
  */
-function removeTableColumnSpecifications(text, gap) {
+function removeLeadingArguments(text, beginRe, groupCounts, gap) {
   let result = '';
   let copiedUpTo = 0;
-  TABLE_BEGIN_RE.lastIndex = 0;
+  beginRe.lastIndex = 0;
   let beginMatch;
-  while ((beginMatch = TABLE_BEGIN_RE.exec(text)) !== null) {
+  while ((beginMatch = beginRe.exec(text)) !== null) {
     let removedUpTo = beginMatch.index + beginMatch[0].length;
-    for (let group = 0; group < TABLE_ENVIRONMENTS[beginMatch[1]]; group++) {
+    for (let group = 0; group < groupCounts[beginMatch[1]]; group++) {
       let braceIndex = removedUpTo;
       while (/\s/.test(text[braceIndex] || '')) {
         braceIndex++;
@@ -151,7 +172,7 @@ function removeTableColumnSpecifications(text, gap) {
     result += text.slice(copiedUpTo, beginMatch.index);
     result += typeof gap === 'function' ? gap(removedText) : gap;
     copiedUpTo = removedUpTo;
-    TABLE_BEGIN_RE.lastIndex = removedUpTo;
+    beginRe.lastIndex = removedUpTo;
   }
   return result + text.slice(copiedUpTo);
 }
@@ -209,7 +230,8 @@ function cleanLatex(text, options = {}) {
 
   // 4. Remove non-text commands together with their braced argument
   //    (\usepackage{...}, \begin{...}, \label{...}, \cite{...}, …).
-  cleaned = removeTableColumnSpecifications(cleaned, gap);
+  cleaned = removeLeadingArguments(cleaned, TABLE_BEGIN_RE, TABLE_ENVIRONMENTS, gap);
+  cleaned = removeLeadingArguments(cleaned, TABLE_COMMAND_RE, TABLE_COMMANDS, gap);
   cleaned = cleaned.replace(DROP_WITH_ARG_RE, gap);
 
   // 5. Remove any remaining commands and their optional argument, keeping the
