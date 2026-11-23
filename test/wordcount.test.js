@@ -89,7 +89,7 @@ for (const { environmentName, columnArguments } of tableEnvironments) {
   });
 }
 
-test('', () => {
+test('keeps the words of a table at their original position', () => {
   const src = '\\begin{tabular}{|l|p{3cm}|} alpha & beta \\end{tabular}';
   const padded = cleanLatex(src, { preserveOffsets: true });
 
