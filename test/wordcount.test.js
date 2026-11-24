@@ -240,5 +240,14 @@ test('keeps counting the text after an incomplete luacode block inside verbatim'
   assert.strictEqual(analyse(src).words, 4);
 });
 
+test('keeps the words after a luacode environment at their original position', () => {
+  const src = 'alpha\n\\begin{luacode}\nx = 1\n\\end{luacode}\nbeta';
+  const padded = cleanLatex(src, { preserveOffsets: true });
+
+  assert.strictEqual(padded.length, src.length);
+  assert.strictEqual(padded.indexOf('alpha'), src.indexOf('alpha'));
+  assert.strictEqual(padded.indexOf('beta'), src.indexOf('beta'));
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
