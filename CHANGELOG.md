@@ -3,6 +3,7 @@
 ## PR-Unreleased
 
 - Ignore the code in `luacode` and `luacode*` environments. It was counted as words before.
+- Ignore the code in braces of `\directlua`, `\luaexec` and `\latelua`. It was counted as words before.
 
 ## PR-Unreleased
 
