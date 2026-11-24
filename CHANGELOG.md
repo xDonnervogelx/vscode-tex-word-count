@@ -1,5 +1,9 @@
 # Change Log
 
+## PR-Unreleased
+
+- Ignore the code in `luacode` and `luacode*` environments. It was counted as words before.
+
 ## 0.4.2
 
 - Changing a setting from the status bar menu no longer fails with a bare
