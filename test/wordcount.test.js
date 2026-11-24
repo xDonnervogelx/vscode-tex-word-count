@@ -166,6 +166,8 @@ test('preserving offsets keeps every word at its original position', () => {
   }
 });
 
+
+
 test('milestones land just after the word that reaches them', () => {
   const src = 'one two three four five six';
   assert.deepStrictEqual(wordMilestones(src, 2), [
@@ -197,6 +199,45 @@ test('milestones respect the comment environment option', () => {
 test('milestones are empty for an invalid interval', () => {
   assert.deepStrictEqual(wordMilestones('one two three', 0), []);
   assert.deepStrictEqual(wordMilestones('one two three', NaN), []);
+});
+
+test('ignores the content of a luacode environment', () => {
+  const src = [
+    'Before the code.',
+    '\\begin{luacode}',
+    'local total = 0',
+    'for i = 1, 3 do total = total + i end',
+    '\\end{luacode}',
+    'After the code.',
+  ].join('\n');
+
+  assert.strictEqual(analyse(src).words, 6);
+});
+
+test('ignores the content of a luacode* environment', () => {
+  const src = [
+    'Before the code.',
+    '\\begin{luacode*}',
+    'tex.print("hello world")',
+    '\\end{luacode*}',
+    'After the code.',
+  ].join('\n');
+
+  assert.strictEqual(analyse(src).words, 6);
+});
+
+test('keeps counting the text after an incomplete luacode block inside verbatim', () => {
+  const src = [
+    '\\begin{verbatim}',
+    '\\begin{luacode}',
+    '\\end{verbatim}',
+    'Four words stay here.',
+    '\\begin{luacode}',
+    'x = 1',
+    '\\end{luacode}',
+  ].join('\n');
+
+  assert.strictEqual(analyse(src).words, 4);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

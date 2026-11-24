@@ -30,6 +30,11 @@ const DROP_WITH_ARG_RE = new RegExp(
 );
 
 /**
+ * Matches a luacode or luacode* environment together with its content.
+ */
+const LUA_ENVIRONMENT_RE = /\\begin\{(luacode\*?)\}[\s\S]*?\\end\{\1\}/g;
+
+/**
  * Strips a LaTeX comment from a single line.
  *
  * A `%` begins a comment that runs to the end of the line, unless it is
@@ -110,6 +115,8 @@ function cleanLatex(text, options = {}) {
     /\\begin\{(verbatim\*?|lstlisting|minted|Verbatim)\}[\s\S]*?\\end\{\1\}/g,
     gap
   );
+
+  cleaned = cleaned.replace(LUA_ENVIRONMENT_RE, gap);
 
   // 3. Remove display and inline mathematics.
   cleaned = cleaned.replace(/\$\$[\s\S]*?\$\$/g, gap);
