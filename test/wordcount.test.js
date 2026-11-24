@@ -66,6 +66,73 @@ test('ignores display maths', () => {
   assert.strictEqual(countWords('before \\[ a + b = c \\] after'), 2);
 });
 
+test('ignores the column specification of a tabular', () => {
+  assert.strictEqual(countWords(
+    '\\begin{tabular}{lcr} one & two & three \\\\ four & five & six \\end{tabular}'
+  ), 6);
+});
+
+const tableEnvironments = [
+  { environmentName: 'tabular', columnArguments: '{ll}' },
+  { environmentName: 'tabular*', columnArguments: '{12cm}{ll}' },
+  { environmentName: 'tabularx', columnArguments: '{12cm}{XX}' },
+  { environmentName: 'tabulary', columnArguments: '{12cm}{LL}' },
+  { environmentName: 'longtable', columnArguments: '{ll}' },
+  { environmentName: 'xltabular', columnArguments: '{12cm}{XX}' },
+  { environmentName: 'NiceTabular', columnArguments: '{ll}' },
+];
+
+for (const { environmentName, columnArguments } of tableEnvironments) {
+  test(`ignores the arguments of ${environmentName}`, () => {
+    const latex = `\\begin{${environmentName}}${columnArguments} one & two \\end{${environmentName}}`;
+    assert.strictEqual(countWords(latex), 2);
+  });
+}
+
+test('keeps the words of a table at their original position', () => {
+  const src = '\\begin{tabular}{|l|p{3cm}|} alpha & beta \\end{tabular}';
+  const padded = cleanLatex(src, { preserveOffsets: true });
+
+  assert.strictEqual(padded.length, src.length);
+  assert.strictEqual(padded.indexOf('alpha'), src.indexOf('alpha'));
+  assert.strictEqual(padded.indexOf('beta'), src.indexOf('beta'));
+});
+
+test('ignores the position argument of a tabular', () => {
+  assert.strictEqual(
+    countWords('\\begin{tabular}[t]{ll} one & two \\end{tabular}'),
+    2
+  );
+});
+
+test('ignores nested braces in a column specification', () => {
+  assert.strictEqual(
+    countWords('\\begin{tabular}{|l|p{3cm}|} one & two \\end{tabular}'),
+    2
+  );
+});
+
+test('ignores the span arguments of a multicolumn', () => {
+  assert.strictEqual(
+    countWords('\\multicolumn{2}{c}{one two} three'),
+    3
+  );
+});
+
+test('ignores the span arguments of a multirow', () => {
+  assert.strictEqual(
+    countWords('\\multirow{2}{*}{one two} three'),
+    3
+  );
+});
+
+test('ignores the trim and range arguments of a cmidrule', () => {
+  assert.strictEqual(
+    countWords('\\cmidrule(lr){2-3} one'),
+    1
+  );
+});
+
 test('ignores verbatim environments', () => {
   const src = 'text \\begin{verbatim}\nlots of code here\n\\end{verbatim} more';
   assert.strictEqual(countWords(src), 2);
