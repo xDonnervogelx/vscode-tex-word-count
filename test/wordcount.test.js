@@ -316,5 +316,34 @@ test('keeps the words after a luacode environment at their original position', (
   assert.strictEqual(padded.indexOf('beta'), src.indexOf('beta'));
 });
 
+test('ignores the code of the lua commands', () => {
+  for (const name of ['directlua', 'luaexec', 'latelua']) {
+    const src = `Before the code. \\${name}{tex.print("hi")} After the code.`;
+    assert.strictEqual(analyse(src).words, 6, name);
+  }
+});
+
+test('ignores a lua command with nested braces', () => {
+  const src = [
+    'Before the code.',
+    '\\directlua{local list = {1, 2} for i = 1, #list do end}',
+    'After the code.',
+  ].join('\n');
+
+  assert.strictEqual(analyse(src).words, 6);
+});
+
+test('keeps counting the text after an incomplete lua command inside verbatim', () => {
+  const src = [
+    '\\begin{verbatim}',
+    '\\directlua{',
+    '\\end{verbatim}',
+    'Four words stay here.',
+    '\\directlua{x = 1}',
+  ].join('\n');
+
+  assert.strictEqual(analyse(src).words, 4);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

@@ -141,10 +141,27 @@ const TABLE_COMMAND_RE = new RegExp(
 );
 
 /**
- * Removes the beginning of a table environment or command together with the
+ * Lua commands and the number of braced groups that hold their code.
+ */
+const LUA_COMMANDS = {
+  directlua: 1,
+  luaexec: 1,
+  latelua: 1,
+};
+
+/**
+ * Matches the start of a Lua command and captures its name in group 1.
+ */
+const LUA_COMMAND_RE = new RegExp(
+  '\\\\(' + Object.keys(LUA_COMMANDS).join('|') + ')(?![a-zA-Z@])\\s*',
+  'g'
+);
+
+/**
+ * Removes the beginning of an environment or command together with the
  * leading arguments that are not text, such as the column specification of
  * `tabular` or the span of `\multicolumn`. Optional arguments directly after
- * the names are removed as well, for example a `[t]`.
+ * the name are removed as well, for example a `[t]`.
  *
  * @param {string} text   The LaTeX text to process.
  * @param {RegExp} beginRe   Matches the beginning and captures the name in group 1.
@@ -239,6 +256,7 @@ function cleanLatex(text, options = {}) {
   //    (\usepackage{...}, \begin{...}, \label{...}, \cite{...}, …).
   cleaned = removeLeadingArguments(cleaned, TABLE_BEGIN_RE, TABLE_ENVIRONMENTS, gap);
   cleaned = removeLeadingArguments(cleaned, TABLE_COMMAND_RE, TABLE_COMMANDS, gap);
+  cleaned = removeLeadingArguments(cleaned, LUA_COMMAND_RE, LUA_COMMANDS, gap);
   cleaned = cleaned.replace(DROP_WITH_ARG_RE, gap);
 
   // 5. Remove any remaining commands and their optional argument, keeping the
