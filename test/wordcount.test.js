@@ -584,5 +584,29 @@ test('replaces an outdated confirmation and the block is reported as ok', () => 
   assert.strictEqual(findLuaBlocks(confirmed)[0].announcedWords, 2);
 });
 
+test('returns a lua block without annotation unchanged', () => {
+  const block = '\\begin{luacode}\nx = 1\n\\end{luacode}';
+
+  assert.strictEqual(confirmLuaBlock(block, '2026-11-25'), block);
+});
+
+test('keeps the Windows line endings when confirming a lua block', () => {
+  const block = '\\begin{luacode}\r\n-- words: 2\r\nx = 1\r\n\\end{luacode}';
+  const checksum = luaChecksum(block);
+
+  assert.strictEqual(
+    confirmLuaBlock(block, '2026-11-25'),
+    `\\begin{luacode}\r\n-- words: 2 | checked: 2026-11-25 | code: ${checksum}\r\nx = 1\r\n\\end{luacode}`
+  );
+});
+
+test('confirming a confirmed lua block again only changes the date', () => {
+  const block = '\\begin{luacode}\n-- words: 2\nx = 1\n\\end{luacode}';
+  const first = confirmLuaBlock(block, '2026-11-25');
+  const second = confirmLuaBlock(first, '2026-12-01');
+
+  assert.strictEqual(second, first.replace('2026-11-25', '2026-12-01'));
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
