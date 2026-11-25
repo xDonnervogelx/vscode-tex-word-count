@@ -158,6 +158,46 @@ const LUA_COMMAND_RE = new RegExp(
 );
 
 /**
+ * Matches the word count annotation of a Lua block, such as `-- words: 3`
+ * or `--[[ words: 3 ]]`, and captures the number in group 1.
+ */
+const LUA_WORDS_RE = /--(?:\[\[)?\s*words:\s*(\d+)/;
+
+/**
+ * Replaces a removed Lua block with the number of words announced in its
+ * annotation. A block without an annotation is replaced as if it held no words.
+ *
+ * @param {string} removedText   The Lua block that is removed.
+ * @param {boolean} preserveOffsets   When true, the replacement has exactly
+ *        the length of the block and keeps its newlines.
+ * @returns {string}
+ */
+function replaceLuaBlock(removedText, preserveOffsets) {
+  const announced = LUA_WORDS_RE.exec(removedText);
+  const announcedWords = announced ? Number(announced[1]) : 0;
+  if (!preserveOffsets) {
+    return ' x'.repeat(announcedWords) + ' ';
+  }
+
+  const padded = blank(removedText).split('');
+  const lineLength = padded.filter((character) => character !== '\n').length;
+  const wordCount = Math.min(announcedWords, Math.floor((lineLength - 1) / 2));
+  let position = 0;
+  let placed = 0;
+  for (let index = 0; index < padded.length && placed < wordCount; index++) {
+    if (padded[index] === '\n') {
+      continue;
+    }
+    if (position % 2 === 1) {
+      padded[index] = 'x';
+      placed++;
+    }
+    position++;
+  }
+  return padded.join('');
+}
+
+/**
  * Removes the beginning of an environment or command together with the
  * leading arguments that are not text, such as the column specification of
  * `tabular` or the span of `\multicolumn`. Optional arguments directly after
@@ -220,6 +260,7 @@ function cleanLatex(text, options = {}) {
   const countBraced = options.countBracedArguments !== false;
   // What removed text is replaced with: same-length padding, or a single space.
   const gap = options.preserveOffsets ? blank : ' ';
+  const luaGap = (removedText) => replaceLuaBlock(removedText, options.preserveOffsets);
 
   // 1. Remove comments line by line. Working line by line with a regex (rather
   //    than split/join) leaves the line terminators, CRLF included, untouched.
@@ -244,7 +285,7 @@ function cleanLatex(text, options = {}) {
     gap
   );
 
-  cleaned = cleaned.replace(LUA_ENVIRONMENT_RE, gap);
+  cleaned = cleaned.replace(LUA_ENVIRONMENT_RE, luaGap);
 
   // 3. Remove display and inline mathematics.
   cleaned = cleaned.replace(/\$\$[\s\S]*?\$\$/g, gap);
@@ -256,7 +297,7 @@ function cleanLatex(text, options = {}) {
   //    (\usepackage{...}, \begin{...}, \label{...}, \cite{...}, …).
   cleaned = removeLeadingArguments(cleaned, TABLE_BEGIN_RE, TABLE_ENVIRONMENTS, gap);
   cleaned = removeLeadingArguments(cleaned, TABLE_COMMAND_RE, TABLE_COMMANDS, gap);
-  cleaned = removeLeadingArguments(cleaned, LUA_COMMAND_RE, LUA_COMMANDS, gap);
+  cleaned = removeLeadingArguments(cleaned, LUA_COMMAND_RE, LUA_COMMANDS, luaGap);
   cleaned = cleaned.replace(DROP_WITH_ARG_RE, gap);
 
   // 5. Remove any remaining commands and their optional argument, keeping the

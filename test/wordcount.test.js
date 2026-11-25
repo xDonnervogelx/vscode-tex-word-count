@@ -345,5 +345,70 @@ test('keeps counting the text after an incomplete lua command inside verbatim', 
   assert.strictEqual(analyse(src).words, 4);
 });
 
+test('counts the words announced in a luacode environment', () => {
+  const src = [
+    'Before the code.',
+    '\\begin{luacode}',
+    '-- words: 3',
+    'tex.print("one two three")',
+    '\\end{luacode}',
+    'After the code.',
+  ].join('\n');
+
+  assert.strictEqual(analyse(src).words, 9);
+});
+
+test('accepts different spacing in the words annotation', () => {
+  for (const annotation of ['-- words: 2', '--words:2', '--   words:   2']) {
+    const src = [
+      'Before the code.',
+      '\\begin{luacode}',
+      annotation,
+      'tex.print("a b")',
+      '\\end{luacode}',
+      'After the code.',
+    ].join('\n');
+
+    assert.strictEqual(analyse(src).words, 8, annotation);
+  }
+});
+
+test('counts the words announced in a lua command', () => {
+  const src =
+    'Before the code. \\directlua{--[[ words: 2 ]] tex.print("a b")} After the code.';
+
+  assert.strictEqual(analyse(src).words, 8);
+});
+
+test('keeps the words after an annotated luacode block at their original position', () => {
+  const src = 'alpha\n\\begin{luacode}\n-- words: 2\nx = 1\n\\end{luacode}\nbeta';
+  const padded = cleanLatex(src, { preserveOffsets: true });
+
+  assert.strictEqual(padded.length, src.length);
+  assert.strictEqual(padded.indexOf('alpha'), src.indexOf('alpha'));
+  assert.strictEqual(padded.indexOf('beta'), src.indexOf('beta'));
+});
+
+test('preserving offsets does not change the count of announced words', () => {
+  const src = 'alpha\n\\begin{luacode}\n-- words: 2\nx = 1\n\\end{luacode}\nbeta';
+  const padded =
+    cleanLatex(src, { preserveOffsets: true }).match(
+      /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu
+    ) || [];
+
+  assert.strictEqual(analyse(src).words, 4);
+  assert.strictEqual(padded.length, 4);
+});
+
+test('milestones place announced words inside the lua block', () => {
+  const src = 'one\n\\begin{luacode}\n-- words: 2\n\\end{luacode}\ntwo';
+  const milestones = wordMilestones(src, 2);
+
+  assert.strictEqual(milestones.length, 2);
+  assert.ok(milestones[0].offset > src.indexOf('\\begin'), 'milestone lies before the block');
+  assert.ok(milestones[0].offset < src.indexOf('two'), `milestone lies after the block`);
+  assert.strictEqual(milestones[1].offset, src.length);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
