@@ -464,5 +464,42 @@ test('reports ignored lua blocks of both forms as ignored', () => {
   assert.strictEqual(blocks[1].status, 'ignored');
 });
 
+test('reports an annotation with a matching checksum as ok', () => {
+  const makeBlock = (annotation) =>
+    `\\begin{luacode}\n${annotation}\nx = 1\n\\end{luacode}`;
+  const checksum = luaChecksum(makeBlock('-- words: 2'));
+  const src = makeBlock(`-- words: 2 checked: 2026-11-25 code: ${checksum}`);
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks[0].status, 'ok');
+  assert.strictEqual(blocks[0].announcedWords, 2);
+});
+
+test('reports an annotation with a different checksum as changed', () => {
+  const src = [
+    '\\begin{luacode}',
+    '-- words: 2 checked: 2026-11-25 code: 00000000',
+    'x = 1',
+    '\\end{luacode}',
+  ].join('\n');
+
+  assert.strictEqual(findLuaBlocks(src)[0].status, 'changed');
+});
+
+test('does not search for lua blocks inside a verbatim environment', () => {
+  const src = [
+    '\\begin{verbatim}',
+    '\\begin{luacode}',
+    'x = 1',
+    '\\end{luacode}',
+    '\\end{verbatim}',
+    '\\directlua{x = 1}',
+  ].join('\n');
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks.length, 1);
+  assert.strictEqual(blocks[0].start, src.indexOf('\\directlua'));
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

@@ -35,6 +35,11 @@ const DROP_WITH_ARG_RE = new RegExp(
 const LUA_ENVIRONMENT_RE = /\\begin\{(luacode\*?)\}[\s\S]*?\\end\{\1\}/g;
 
 /**
+ * Matches a verbatim or code listing environment together with its content.
+ */
+const VERBATIM_RE = /\\begin\{(verbatim\*?|lstlisting|minted|Verbatim)\}[\s\S]*?\\end\{\1\}/g;
+
+/**
  * Strips a LaTeX comment from a single line.
  *
  * A `%` begins a comment that runs to the end of the line, unless it is
@@ -162,6 +167,12 @@ const LUA_COMMAND_RE = new RegExp(
  * or `--[[ words: 3 ]]`, and captures the number in group 1.
  */
 const LUA_WORDS_RE = /--(?:\[\[)?\s*words:\s*(\d+)/;
+
+/**
+ * Matches the code checksum in the annotation of a Lua block, such as
+ * `code: 1a2b3c4d`, and captures the eight hexadecimal digits in group 1.
+ */
+const LUA_CODE_RE = /\bcode:\s*([0-9a-f]{8})\b/;
 
 /**
  * Matches the ignore marker of a Lua block, either as its own line
@@ -299,15 +310,19 @@ function removeLeadingArguments(text, beginRe, groupCounts, gap) {
  * @param {number} start   The index of the block in the text.
  * @returns {{ start: number, end: number, status: string, announcedWords: number}}
  *          The position of the block, its status and the words announced in
- *          its annotation. The status is `ignored`, `unconfirmed` or `missing`.
+ *          its annotation. The status is `ignored`, `ok`, `changed`,
+ *          `unconfirmed` or `missing`.
  */
 function describeLuaBlock(blockText, start) {
   const announced = LUA_WORDS_RE.exec(blockText);
+  const storedChecksum = LUA_CODE_RE.exec(blockText);
   let status = 'missing';
   if (LUA_IGNORE_RE.test(blockText)) {
     status = 'ignored';
-  } else if (announced) {
+  } else if (announced && !storedChecksum) {
     status = 'unconfirmed';
+  } else if (announced) {
+    status = storedChecksum[1] === luaChecksum(blockText) ? 'ok' : 'changed';
   }
   return {
     start,
@@ -319,23 +334,26 @@ function describeLuaBlock(blockText, start) {
 
 /**
  * Finds all Lua blocks of a text, that is the `luacode` environments and the
- * braces of the Lua commands.
+ * braces of the Lua commands. Lua blocks inside verbatim environments are not
+ * found.
  *
  * @param {string} text   The LaTeX text to search in.
  * @returns {Array<{ start: number, end: number, status: string, announcedWords: number}>}
  *          The blocks in the order they appear in the text.
  */
 function findLuaBlocks(text) {
+  const searchable = text.replace(VERBATIM_RE, blank);
   const blocks = [];
-  const collectBlock = (blockText, start) => {
+  const collectBlock = (foundText, start) => {
+    const blockText = text.slice(start, start + foundText.length);
     blocks.push(describeLuaBlock(blockText, start));
-    return blank(blockText);
+    return blank(foundText);
   };
 
-  for (const match of text.matchAll(LUA_ENVIRONMENT_RE)) {
+  for (const match of searchable.matchAll(LUA_ENVIRONMENT_RE)) {
     collectBlock(match[0], match.index);
   }
-  removeLeadingArguments(text, LUA_COMMAND_RE, LUA_COMMANDS, collectBlock);
+  removeLeadingArguments(searchable, LUA_COMMAND_RE, LUA_COMMANDS, collectBlock);
 
   return blocks.sort((first, second) => first.start - second.start);
 }
@@ -381,10 +399,7 @@ function cleanLatex(text, options = {}) {
   }
 
   // 2. Remove verbatim and code environments (their contents are not words).
-  cleaned = cleaned.replace(
-    /\\begin\{(verbatim\*?|lstlisting|minted|Verbatim)\}[\s\S]*?\\end\{\1\}/g,
-    gap
-  );
+  cleaned = cleaned.replace(VERBATIM_RE, gap);
 
   cleaned = cleaned.replace(LUA_ENVIRONMENT_RE, luaGap);
 
