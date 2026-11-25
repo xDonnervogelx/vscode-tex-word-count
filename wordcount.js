@@ -384,6 +384,38 @@ function findLuaBlocks(text) {
 }
 
 /**
+ * The problems a Lua block can have, by status. A block with the status `ok`
+ * or `ignored` has none.
+ */
+const LUA_PROBLEMS = {
+  missing: {
+    severity: 'warning',
+    message: 'This Lua block has no word count. Add an annotation such as "-- words: 3" to announce the words it prints, or mark the block with "-- ignore" if it prints no text.',
+  },
+  changed: {
+    severity: 'warning',
+    message: 'This Lua block changed since its word count was confirmed. Check the word count and confirm it again.',
+  },
+  unconfirmed: {
+    severity: 'information',
+    message: 'The announced word count of this Lua block is not confirmed yet. Confirm it with "Confirm Lua word counts".',
+  },
+};
+
+/**
+ * Describes the problem of a Lua block that the user should look at.
+ *
+ * @param {{ status: string }} block   A Lua block found by {@link findLuaBlocks}.
+ * @returns {{ severity: string, message: string}|null}   The severity, either
+ *          `warning` or `information`, and a message for the user, or null when
+ *          the block needs no attention.
+ */
+function describeLuaProblem(block) {
+  const problem = LUA_PROBLEMS[block.status];
+  return problem ? { ...problem } : null;
+}
+
+/**
  * Reduces a piece of LaTeX to just its prose, removing comments, commands,
  * mathematics and verbatim blocks. This shared step backs both the word and
  * the character counts.
@@ -549,4 +581,5 @@ module.exports = {
   fnv1a,
   luaChecksum,
   findLuaBlocks,
+  describeLuaProblem,
 };

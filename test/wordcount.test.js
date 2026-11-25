@@ -11,6 +11,7 @@ const {
   fnv1a,
   luaChecksum,
   findLuaBlocks,
+  describeLuaProblem,
 } = require('../wordcount');
 
 let passed = 0;
@@ -524,6 +525,28 @@ test('does not report a lua command without braces as a block', () => {
   const src = '\\newcommand{\\run}{\\directlua} \\directlua{x = 1';
 
   assert.strictEqual(findLuaBlocks(src).length, 0);
+});
+
+test('reports no problem for ok and ignored lua blocks', () => {
+  for (const status of ['ok', 'ignored']) {
+    assert.strictEqual(describeLuaProblem({ status }), null, status);
+  }
+});
+
+test('reports a missing or changed lua block as a warning', () => {
+  for (const status of ['missing', 'changed']) {
+    const problem = describeLuaProblem({ status });
+
+    assert.strictEqual(problem.severity, 'warning', status);
+    assert.ok(problem.message.length > 0, `${status} has no message`);
+  }
+});
+
+test('reports an unconfirmed lua block as information', () => {
+  const problem = describeLuaProblem({ status: 'unconfirmed' });
+
+  assert.strictEqual(problem.severity, 'information');
+  assert.ok(problem.message.length > 0, 'unconfirmed has no message');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
