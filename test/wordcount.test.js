@@ -12,6 +12,7 @@ const {
   luaChecksum,
   findLuaBlocks,
   describeLuaProblem,
+  confirmLuaBlock,
 } = require('../wordcount');
 
 let passed = 0;
@@ -547,6 +548,40 @@ test('reports an unconfirmed lua block as information', () => {
 
   assert.strictEqual(problem.severity, 'information');
   assert.ok(problem.message.length > 0, 'unconfirmed has no message');
+});
+
+test('writes the confirmation into the line annotation of a lua block', () => {
+  const block = '\\begin{luacode}\n-- words: 2\nx = 1\n\\end{luacode}';
+  const checksum = luaChecksum(block);
+
+  assert.strictEqual(
+    confirmLuaBlock(block, '2026-11-25'),
+    `\\begin{luacode}\n-- words: 2 | checked: 2026-11-25 | code: ${checksum}\nx = 1\n\\end{luacode}`
+  );
+});
+
+test('writes the confirmation into the bracket annotation of a lua command', () => {
+  const block = '\\directlua{--[[ words: 3 ]] tex.print("a b c")}';
+  const checksum = luaChecksum(block);
+
+  assert.strictEqual(
+    confirmLuaBlock(block, '2026-11-25'),
+    `\\directlua{--[[ words: 3 | checked: 2026-11-25 | code: ${checksum} ]] tex.print("a b c")}`
+  );
+});
+
+test('replaces an outdated confirmation and the block is reported as ok', () => {
+  const block = [
+    '\\begin{luacode}',
+    '-- words: 2 | checked: 2026-01-01 | code: 00000000',
+    'x = 1',
+    '\\end{luacode}',
+  ].join('\n');
+  const confirmed = confirmLuaBlock(block, '2026-11-25');
+
+  assert.strictEqual(confirmed.split('checked:').length, 2);
+  assert.strictEqual(findLuaBlocks(confirmed)[0].status, 'ok');
+  assert.strictEqual(findLuaBlocks(confirmed)[0].announcedWords, 2);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

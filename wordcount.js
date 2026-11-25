@@ -416,6 +416,36 @@ function describeLuaProblem(block) {
 }
 
 /**
+ * Matches the first words annotation of a Lua block, in its bracket form
+ * (`--[[ words: 3 ]]`, number in group 1) or its line form (`-- words: 3`, up
+ * to the end of the line, number in group 2).
+ */
+const LUA_ANNOTATION_PARTS_RE =
+  /--\[\[\s*words:\s*(\d+)[\s\S]*?\]\]|--[ \t]*words:[ \t]*(\d+)[^\r\n]*/;
+
+/**
+ * Writes the confirmation of the word count into the annotation of a Lua
+ * block: the announced words, the date of the check and the checksum of the
+ * code. The form of the annotation is kept and an older confirmation is
+ * replaced. A block without annotation is returned unchanged.
+ *
+ * @param {string} blockText   The text of the Lua block.
+ * @param {string} checkedDate   The date of the check, such as `2026-11-25`.
+ * @returns {string}   The Lua block with the confirmed annotation.
+ */
+function confirmLuaBlock(blockText, checkedDate) {
+  const checksum = luaChecksum(blockText);
+  return blockText.replace(
+    LUA_ANNOTATION_PARTS_RE,
+    (match, bracketWords, lineWords) => {
+      const details =
+        `words: ${bracketWords || lineWords} | checked: ${checkedDate} | code: ${checksum}`;
+      return bracketWords ? `--[[ ${details} ]]` : `-- ${details}`;
+    }
+  );
+}
+
+/**
  * Reduces a piece of LaTeX to just its prose, removing comments, commands,
  * mathematics and verbatim blocks. This shared step backs both the word and
  * the character counts.
@@ -582,4 +612,5 @@ module.exports = {
   luaChecksum,
   findLuaBlocks,
   describeLuaProblem,
+  confirmLuaBlock,
 };
