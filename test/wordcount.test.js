@@ -608,5 +608,29 @@ test('confirming a confirmed lua block again only changes the date', () => {
   assert.strictEqual(second, first.replace('2026-11-25', '2026-12-01'));
 });
 
+test('reports a matching checksum without a checked date as undated', () => {
+  const makeBlock = (annotation) =>
+    `\\begin{luacode}\n${annotation}\nx = 1\n\\end{luacode}`;
+  const checksum = luaChecksum(makeBlock('-- words: 2'));
+  const src = makeBlock(`-- words: 2 | code: ${checksum}`);
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks[0].status, 'undated');
+  assert.strictEqual(blocks[0].announcedWords, 2);
+});
+
+test('reports a changed checksum as changed even without a checked date', () => {
+  const src = '\\begin{luacode}\n-- words: 2 | code: 00000000\nx = 1\n\\end{luacode}';
+
+  assert.strictEqual(findLuaBlocks(src)[0].status, 'changed');
+});
+
+test('reports an undated lua block as information', () => {
+  const problem = describeLuaProblem({ status: 'undated' });
+
+  assert.strictEqual(problem.severity, 'information');
+  assert.ok(problem.message.length > 0, 'undated has no message');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

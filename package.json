@@ -47,6 +47,10 @@
       {
         "command": "texWordCount.showMenu",
         "title": "TeX Word Count: Show Menu"
+      },
+      {
+        "command": "texWordCount.confirmLuaWordCounts",
+        "title": "TeX Word Count: Confirm Lua Word Counts"
       }
     ],
     "configuration": {

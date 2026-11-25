@@ -6,6 +6,7 @@ const {
   wordMilestones,
   findLuaBlocks,
   describeLuaProblem,
+  confirmLuaBlock,
 } = require('./wordcount');
 
 /** How long to wait after the last edit before redrawing the markers. */
@@ -343,8 +344,68 @@ async function toggleMarkers() {
 }
 
 /**
- * The menu behind the status bar item: the counts, plus the two marker
- * settings, without a trip to the Settings editor.
+ * Returns today's date in the local time zone as `YYYY-MM-DD`.
+ * @returns {string}
+ */
+function getTodayDate() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Confirms the announced word counts of the Lua blocks in the active editor.
+ * Every block whose count is not confirmed yet, whose code changed since it
+ * was confirmed or whose confirmation has no date gets today's date and the
+ * checksum of its code written into its annotation. Blocks without an
+ * annotation are left alone, because there is no announced count to confirm.
+ */
+async function confirmLuaWordCounts() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !isTexDocument(editor.document)) {
+    vscode.window.showInformationMessage(
+      'Open a LaTeX (.tex) file to confirm its Lua word counts.'
+    );
+    return;
+  }
+
+  const document = editor.document;
+  const blocks = findLuaBlocks(document.getText()).filter(
+    (block) => ['unconfirmed', 'changed', 'undated'].includes(block.status)
+  );
+  if (blocks.length === 0) {
+    vscode.window.showInformationMessage('There are no Lua word counts to confirm.');
+    return;
+  }
+
+  const today = getTodayDate();
+  const applied = await editor.edit((editBuilder) => {
+    for (const block of blocks) {
+      const range = new vscode.Range(
+        document.positionAt(block.start),
+        document.positionAt(block.end)
+      );
+      editBuilder.replace(range, confirmLuaBlock(document.getText(range), today));
+    }
+  });
+  if (!applied) {
+    vscode.window.showErrorMessage(
+      'The Lua word counts could not be confirmed. The file may be read-only or may have changed in the meantime. Try again.'
+    );
+    return;
+  }
+
+  updateLuaDiagnostics();
+  vscode.window.showInformationMessage(
+    `Confirmed the word count of ${blocks.length} Lua ${blocks.length === 1 ? 'block' : 'blocks'}.`
+  );
+}
+
+/**
+ * The menu behind the status bar item: the counts, the two marker settings
+ * and the confirmation of Lua word counts, without a trip to the Settings
+ * editor.
  */
 async function showMenu() {
   const options = getOptions();
@@ -362,6 +423,10 @@ async function showMenu() {
           ? '$(eye-closed) Hide progress markers'
           : '$(eye) Show progress markers',
         action: toggleMarkers,
+      },
+      {
+        label: '$(check) Confirm Lua word counts',
+        action: confirmLuaWordCounts,
       },
     ],
     { title: 'TeX Word Count' }
@@ -408,7 +473,14 @@ function activate(context) {
       'texWordCount.setMarkerInterval',
       setMarkerInterval
     ),
-    vscode.commands.registerCommand('texWordCount.toggleMarkers', toggleMarkers)
+    vscode.commands.registerCommand(
+      'texWordCount.toggleMarkers',
+      toggleMarkers
+    ),
+    vscode.commands.registerCommand(
+      'texWordCount.confirmLuaWordCounts',
+      confirmLuaWordCounts
+    )
   );
 
   // Recompute when the editor, its selection, its contents, or the settings

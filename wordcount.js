@@ -189,6 +189,12 @@ const LUA_WORDS_RE = /--(?:\[\[)?\s*words:\s*(\d+)/;
 const LUA_CODE_RE = /\bcode:\s*([0-9a-f]{8})\b/;
 
 /**
+ * Matches the date of the check in the annotation of a Lua block, such as
+ * `checked: 2026-11-25`, and captures the date in group 1.
+ */
+const LUA_CHECKED_RE = /\bchecked:\s*(\d{4}-\d{2}-\d{2})/;
+
+/**
  * Matches the ignore marker of a Lua block, either as its own line
  * (`-- ignore`) or in its bracket form (`--[[ ignore ]]`).
  */
@@ -331,7 +337,7 @@ function removeLeadingArguments(text, beginRe, groupCounts, gap) {
  * @returns {{ start: number, end: number, status: string, announcedWords: number, printsText: boolean}}
  *          The position of the block, its status, the words announced in its
  *          annotation and whether it typesets text. The status is `ignored`,
- *          `ok`, `changed`, `unconfirmed` or `missing`.
+ *          `ok`, `undated`, `changed`, `unconfirmed` or `missing`.
  */
 function describeLuaBlock(blockText, start) {
   const announced = LUA_WORDS_RE.exec(blockText);
@@ -341,8 +347,10 @@ function describeLuaBlock(blockText, start) {
     status = 'ignored';
   } else if (announced && !storedChecksum) {
     status = 'unconfirmed';
+  } else if (announced && storedChecksum[1] !== luaChecksum(blockText)) {
+    status = 'changed';
   } else if (announced) {
-    status = storedChecksum[1] === luaChecksum(blockText) ? 'ok' : 'changed';
+    status = LUA_CHECKED_RE.test(blockText) ? 'ok' : 'undated';
   }
   return {
     start,
@@ -399,6 +407,10 @@ const LUA_PROBLEMS = {
   unconfirmed: {
     severity: 'information',
     message: 'The announced word count of this Lua block is not confirmed yet. Confirm it with "Confirm Lua word counts".',
+  },
+  undated: {
+    severity: 'information',
+    message: 'This Lua block has no checked date. Confirm it again to add the date of the check.',
   },
 };
 
