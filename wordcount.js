@@ -334,7 +334,7 @@ function removeLeadingArguments(text, beginRe, groupCounts, gap) {
  *
  * @param {string} blockText   The text of the Lua block.
  * @param {number} start   The index of the block in the text.
- * @returns {{ start: number, end: number, status: string, announcedWords: number, printsText: boolean}}
+ * @returns {{ start: number, end: number, status: string, announcedWords: number, checkedDate: (string|null), printsText: boolean}}
  *          The position of the block, its status, the words announced in its
  *          annotation and whether it typesets text. The status is `ignored`,
  *          `ok`, `undated`, `changed`, `unconfirmed` or `missing`.
@@ -342,6 +342,7 @@ function removeLeadingArguments(text, beginRe, groupCounts, gap) {
 function describeLuaBlock(blockText, start) {
   const announced = LUA_WORDS_RE.exec(blockText);
   const storedChecksum = LUA_CODE_RE.exec(blockText);
+  const checkedDate = LUA_CHECKED_RE.exec(blockText);
   let status = 'missing';
   if (LUA_IGNORE_RE.test(blockText)) {
     status = 'ignored';
@@ -357,6 +358,7 @@ function describeLuaBlock(blockText, start) {
     end: start + blockText.length,
     status,
     announcedWords: announced ? Number(announced[1]) : 0,
+    checkedDate: checkedDate ? checkedDate[1] : null,
     printsText: LUA_PRINT_RE.test(blockText),
   };
 }
@@ -368,7 +370,7 @@ function describeLuaBlock(blockText, start) {
  * group.
  *
  * @param {string} text   The LaTeX text to search in.
- * @returns {Array<{ start: number, end: number, status: string, announcedWords: number, printsText: boolean}>}
+ * @returns {Array<{ start: number, end: number, status: string, announcedWords: number, checkedDate: (string|null), printsText: boolean}>}
  *          The blocks in the order they appear in the text.
  */
 function findLuaBlocks(text) {
@@ -455,6 +457,23 @@ function confirmLuaBlock(blockText, checkedDate) {
       return bracketWords ? `--[[ ${details} ]]` : `-- ${details}`;
     }
   );
+}
+
+/**
+ * Summarizes the Lua blocks of a document for an overview.
+ *
+ * @param {string} text   The LaTeX source.
+ * @returns {{items: Array<{ line: number, start: number, end: number, status: string, announcedWords: number, checkedDate: (string|null), printsText: boolean}>, announcedWords: number}}
+ *          The blocks with their line numbers and the sum of all announced words.
+ */
+function summarizeLuaBlocks(text) {
+  const items = findLuaBlocks(text).map((block) => ({
+    ...block,
+    line: text.slice(0, block.start).split('\n').length,
+  }));
+  const announcedWords = items.reduce((sum, item) => sum + item.announcedWords, 0);
+
+  return { items, announcedWords };
 }
 
 /**
@@ -625,4 +644,5 @@ module.exports = {
   findLuaBlocks,
   describeLuaProblem,
   confirmLuaBlock,
+  summarizeLuaBlocks,
 };

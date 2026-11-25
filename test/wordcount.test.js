@@ -13,6 +13,7 @@ const {
   findLuaBlocks,
   describeLuaProblem,
   confirmLuaBlock,
+  summarizeLuaBlocks,
 } = require('../wordcount');
 
 let passed = 0;
@@ -630,6 +631,36 @@ test('reports an undated lua block as information', () => {
 
   assert.strictEqual(problem.severity, 'information');
   assert.ok(problem.message.length > 0, 'undated has no message');
+});
+
+test('reports the checked date of a confirmed lua block', () => {
+  const makeBlock = (annotation) =>
+    `\\begin{luacode}\n${annotation}\nx = 1\n\\end{luacode}`;
+  const checksum = luaChecksum(makeBlock('-- words: 2'));
+  const src = makeBlock(`-- words: 2 | checked: 2026-11-25 | code: ${checksum}`);
+
+  assert.strictEqual(findLuaBlocks(src)[0].checkedDate, '2026-11-25');
+});
+
+test('reports no checked date for an unconfirmed lua block', () => {
+  const src = '\\begin{luacode}\n-- words: 2\nx = 1\n\\end{luacode}';
+
+  assert.strictEqual(findLuaBlocks(src)[0].checkedDate, null);
+});
+
+test('summarizes the lua blocks with their lines and announced words', () => {
+  const src = [
+    'Before.',
+    '\\begin{luacode}',
+    '-- words: 3',
+    'x = 1',
+    '\\end{luacode}',
+    '\\directlua{--[[ words: 2 ]] y = 2}',
+  ].join('\n');
+  const summary = summarizeLuaBlocks(src);
+
+  assert.deepStrictEqual(summary.items.map((item) => item.line), [2, 6]);
+  assert.strictEqual(summary.announcedWords, 5);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
