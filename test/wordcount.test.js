@@ -501,5 +501,30 @@ test('does not search for lua blocks inside a verbatim environment', () => {
   assert.strictEqual(blocks[0].start, src.indexOf('\\directlua'));
 });
 
+test('does not search for a lua command inside a comment', () => {
+  const src = '% \\directlua{x = 1}\n\\directlua{y = 2}';
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks.length, 1);
+  assert.strictEqual(blocks[0].start, src.lastIndexOf('\\directlua'));
+});
+
+test('flags a lua block that prints text', () => {
+  const src = [
+    '\\begin{luacode}\n-- ignore\ntex.print("one two")\n\\end{luacode}',
+    '\\begin{luacode}\n-- ignore\nx = 1\n\\end{luacode}',
+  ].join('\n');
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks[0].printsText, true);
+  assert.strictEqual(blocks[1].printsText, false);
+});
+
+test('does not report a lua command without braces as a block', () => {
+  const src = '\\newcommand{\\run}{\\directlua} \\directlua{x = 1';
+
+  assert.strictEqual(findLuaBlocks(src).length, 0);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

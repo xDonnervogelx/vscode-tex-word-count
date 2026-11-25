@@ -66,6 +66,20 @@ function stripComment(line) {
 }
 
 /**
+ * Replaces the comments of a text with spaces, so that every other character
+ * keeps its original offset.
+ *
+ * @param {string} text   The LaTeX text to process.
+ * @returns {string}   The text with its comments blanked.
+ */
+function blankComments(text) {
+  return text.replace(/[^\r\n]+/g, (line) => {
+    const kept = stripComment(line);
+    return kept + ' '.repeat(line.length - kept.length);
+  });
+}
+
+/**
  * Replaces a matched chunk with whitespace of exactly the same length, keeping
  * newlines in place. Used when the caller needs the cleaned text to line up,
  * character for character, with the original document.
@@ -179,6 +193,12 @@ const LUA_CODE_RE = /\bcode:\s*([0-9a-f]{8})\b/;
  * (`-- ignore`) or in its bracket form (`--[[ ignore ]]`).
  */
 const LUA_IGNORE_RE = /--\[\[\s*ignore\s*\]\]|^[ \t]*--[ \t]*ignore[ \t\r]*$/m;
+
+/**
+ * Matches a call that typesets text from Lua: `tex.print`, `tex.sprint`,
+ * `tex.tprint` or `tex.cprint`.
+ */
+const LUA_PRINT_RE = /\btex\.[stc]?print\b/;
 
 /**
  * Replaces a removed Lua block with the number of words announced in its
@@ -308,10 +328,10 @@ function removeLeadingArguments(text, beginRe, groupCounts, gap) {
  *
  * @param {string} blockText   The text of the Lua block.
  * @param {number} start   The index of the block in the text.
- * @returns {{ start: number, end: number, status: string, announcedWords: number}}
- *          The position of the block, its status and the words announced in
- *          its annotation. The status is `ignored`, `ok`, `changed`,
- *          `unconfirmed` or `missing`.
+ * @returns {{ start: number, end: number, status: string, announcedWords: number, printsText: boolean}}
+ *          The position of the block, its status, the words announced in its
+ *          annotation and whether it typesets text. The status is `ignored`,
+ *          `ok`, `changed`, `unconfirmed` or `missing`.
  */
 function describeLuaBlock(blockText, start) {
   const announced = LUA_WORDS_RE.exec(blockText);
@@ -329,22 +349,27 @@ function describeLuaBlock(blockText, start) {
     end: start + blockText.length,
     status,
     announcedWords: announced ? Number(announced[1]) : 0,
+    printsText: LUA_PRINT_RE.test(blockText),
   };
 }
 
 /**
  * Finds all Lua blocks of a text, that is the `luacode` environments and the
- * braces of the Lua commands. Lua blocks inside verbatim environments are not
- * found.
+ * braces of the Lua commands. Lua blocks inside comments and verbatim
+ * environments are not found, and neither is a Lua command without a braced
+ * group.
  *
  * @param {string} text   The LaTeX text to search in.
- * @returns {Array<{ start: number, end: number, status: string, announcedWords: number}>}
+ * @returns {Array<{ start: number, end: number, status: string, announcedWords: number, printsText: boolean}>}
  *          The blocks in the order they appear in the text.
  */
 function findLuaBlocks(text) {
-  const searchable = text.replace(VERBATIM_RE, blank);
+  const searchable = blankComments(text).replace(VERBATIM_RE, blank);
   const blocks = [];
   const collectBlock = (foundText, start) => {
+    if (!foundText.includes('{')) {
+      return foundText;
+    }
     const blockText = text.slice(start, start + foundText.length);
     blocks.push(describeLuaBlock(blockText, start));
     return blank(foundText);
