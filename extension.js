@@ -1,10 +1,21 @@
 'use strict';
 
 const vscode = require('vscode');
-const { analyse, wordMilestones } = require('./wordcount');
+const {
+  analyse,
+  wordMilestones,
+  findLuaBlocks,
+  describeLuaProblem,
+} = require('./wordcount');
 
 /** How long to wait after the last edit before redrawing the markers. */
 const MARKER_DEBOUNCE_MS = 300;
+
+/** Maps the severity names of the word counter to the ones of VS Code. */
+const LUA_SEVERITY = {
+  warning: vscode.DiagnosticSeverity.Warning,
+  information: vscode.DiagnosticSeverity.Information,
+};
 
 /** @type {vscode.StatusBarItem} */
 let statusBarItem;
@@ -14,6 +25,9 @@ let markerDecorationType;
 
 /** @type {NodeJS.Timeout | undefined} */
 let markerTimer;
+
+/** @type {vscode.DiagnosticCollection} */
+let luaDiagnostics;
 
 /**
  * Returns true when the given document is a LaTeX document.
@@ -33,6 +47,7 @@ function getOptions() {
     showCharacters: config.get('showCharacters', true),
     markersEnabled: config.get('progressMarkers.enabled', true),
     markerInterval: config.get('progressMarkers.interval', 250),
+    luaWarnings: config.get('luaWarnings', true),
   };
 }
 
@@ -140,8 +155,48 @@ function updateMarkers() {
 }
 
 /**
- * Redraws the markers once the user pauses, so that typing does not trigger a
- * full re-scan of the document on every keystroke.
+ * Marks the Lua blocks of the active editor that need attention: blocks without
+ * a word count, with an unconfirmed one or with code that changed since the
+ * count was confirmed. Only the first line of a block is marked, so a long
+ * environment does not light up as a whole.
+ */
+function updateLuaDiagnostics() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !isTexDocument(editor.document)) {
+    return;
+  }
+
+  const document = editor.document;
+  if (!getOptions().luaWarnings) {
+    luaDiagnostics.delete(document.uri);
+    return;
+  }
+
+  const diagnostics = [];
+  for (const block of findLuaBlocks(document.getText())) {
+    const problem = describeLuaProblem(block);
+    if (!problem) {
+      continue;
+    }
+    const start = document.positionAt(block.start);
+    const end = document.positionAt(block.end);
+    const markedEnd =
+      end.line === start.line ? end : document.lineAt(start.line).range.end;
+    const diagnostic = new vscode.Diagnostic(
+      new vscode.Range(start, markedEnd),
+      problem.message,
+      LUA_SEVERITY[problem.severity]
+    );
+    diagnostic.source = 'TeX Word Count';
+    diagnostics.push(diagnostic);
+  }
+  luaDiagnostics.set(document.uri, diagnostics);
+}
+
+/**
+ * Redraws the markers and refreshes the Lua diagnostics once the user pauses,
+ * so that typing does not trigger a full re-scan of the document on every
+ * keystroke.
  */
 function scheduleMarkerUpdate() {
   if (markerTimer) {
@@ -150,6 +205,7 @@ function scheduleMarkerUpdate() {
   markerTimer = setTimeout(() => {
     markerTimer = undefined;
     updateMarkers();
+    updateLuaDiagnostics();
   }, MARKER_DEBOUNCE_MS);
 }
 
@@ -327,6 +383,9 @@ function activate(context) {
   statusBarItem.command = 'texWordCount.showMenu';
   context.subscriptions.push(statusBarItem);
 
+  luaDiagnostics = vscode.languages.createDiagnosticCollection('texWordCount');
+  context.subscriptions.push(luaDiagnostics);
+
   // The milestone labels: dimmed, italic ghost text after the line's own text.
   // The colour comes from the theme (the same one CodeLens uses), so the
   // markers stay readable but recessive in both light and dark themes.
@@ -359,6 +418,7 @@ function activate(context) {
       updateStatusBar();
       // A newly revealed editor has no decorations yet: draw them at once.
       updateMarkers();
+      updateLuaDiagnostics();
     }),
     vscode.window.onDidChangeTextEditorSelection((event) => {
       if (event.textEditor === vscode.window.activeTextEditor) {
@@ -376,12 +436,17 @@ function activate(context) {
       if (event.affectsConfiguration('texWordCount')) {
         updateStatusBar();
         updateMarkers();
+        updateLuaDiagnostics();
       }
+    }),
+    vscode.workspace.onDidCloseTextDocument((document) => {
+      luaDiagnostics.delete(document.uri);
     })
   );
 
   updateStatusBar();
   updateMarkers();
+  updateLuaDiagnostics();
 }
 
 function deactivate() {
@@ -391,6 +456,9 @@ function deactivate() {
   }
   if (markerDecorationType) {
     markerDecorationType.dispose();
+  }
+  if (luaDiagnostics) {
+    luaDiagnostics.dispose();
   }
   if (statusBarItem) {
     statusBarItem.dispose();

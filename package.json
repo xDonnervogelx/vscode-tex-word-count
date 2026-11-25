@@ -72,6 +72,11 @@
           "default": 250,
           "minimum": 1,
           "description": "Number of words between progress markers."
+        },
+        "texWordCount.luaWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Mark Lua blocks whose word count is missing, not confirmed or out of date. Turning this off only hides the markers, the announced words are still counted."
         }
       }
     }
