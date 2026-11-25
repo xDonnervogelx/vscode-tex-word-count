@@ -198,6 +198,52 @@ function replaceLuaBlock(removedText, preserveOffsets) {
 }
 
 /**
+ * Computes the 32 bit FNV-1a hash of a text, taken over its UTF-8 bytes.
+ *
+ * @param {string} text   The text to hash.
+ * @returns {string}   The hash as eight lowercase hexadecimal digits.
+ */
+function fnv1a(text) {
+  let hash = 0x811c9dc5;
+  for (const byte of Buffer.from(text, 'utf8')) {
+    hash ^= byte;
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * Matches the words annotation of a Lua block in its bracket form
+ * (`--[[ words: 3 ]]`) or its line form (`-- words: 3`), including a checked
+ * date and a code checksum that may follow.
+ */
+const LUA_ANNOTATION_RE = /--\[\[\s*words:[\s\S]*?\]\]|--\s*words:[^\n]*/g;
+
+/**
+ * Computes the checksum of a Lua block. Used to detect changed Lua code
+ * to hint the user to recount the block's words.
+ * The annotation is left out and line endings are unified, so neither
+ * editing the annotation nor a Windows line ending changes the result.
+ *
+ * Limitations: The checksum only sees the text of this block. If the block
+ * reads data from a file or calls functions defined elsewhere, its output can
+ * change while the checksum stays the same. Any edit to the block, even one
+ * that does not change output, changes the checksum, so a changed
+ * checksum is a reason to check the word count again, not proof that it is
+ * wrong. The hash is not cryptographic, and two different texts share a
+ * checksum by chance with a probability of about one in 4.3 billion.
+ *
+ * @param {string} blockText   The text of the Lua block.
+ * @returns {string}   The checksum as eight lowercase hexadecimal digits.
+ */
+function luaChecksum(blockText) {
+  const normalized = blockText
+    .replace(/\r\n/g, '\n')
+    .replace(LUA_ANNOTATION_RE, '');
+  return fnv1a(normalized);
+}
+
+/**
  * Removes the beginning of an environment or command together with the
  * leading arguments that are not text, such as the column specification of
  * `tabular` or the span of `\multicolumn`. Optional arguments directly after
@@ -405,4 +451,6 @@ module.exports = {
   cleanLatex,
   stripComment,
   wordMilestones,
+  fnv1a,
+  luaChecksum,
 };

@@ -8,6 +8,8 @@ const {
   cleanLatex,
   stripComment,
   wordMilestones,
+  fnv1a,
+  luaChecksum,
 } = require('../wordcount');
 
 let passed = 0;
@@ -406,8 +408,29 @@ test('milestones place announced words inside the lua block', () => {
 
   assert.strictEqual(milestones.length, 2);
   assert.ok(milestones[0].offset > src.indexOf('\\begin'), 'milestone lies before the block');
-  assert.ok(milestones[0].offset < src.indexOf('two'), `milestone lies after the block`);
+  assert.ok(milestones[0].offset < src.indexOf('two'), 'milestone lies after the block');
   assert.strictEqual(milestones[1].offset, src.length);
+});
+
+test(
+  'computes the FNV-1a checksum as eight hexadecimal digits to detect changed Lua code',
+  () => {
+    assert.strictEqual(fnv1a(''), '811c9dc5');
+    assert.strictEqual(fnv1a('a'), 'e40c292c');
+    assert.strictEqual(fnv1a('foobar'), 'bf9cf968');
+  }
+);
+
+test('checksum ignores the whole annotation of a lua block', () => {
+  const plain = '-- words: 3\nlocal a = 1';
+  const confirmed = '-- words: 5 checked: 2026-11-25 code: abcd1234\nlocal a = 1';
+
+  assert.strictEqual(luaChecksum(plain), luaChecksum(confirmed));
+});
+
+test('changes the checksum with the code but not with the line endings', () => {
+  assert.notStrictEqual(luaChecksum('local a = 1'), luaChecksum('local a = 2'));
+  assert.strictEqual(luaChecksum('a = 1\r\nb = 2'), luaChecksum('a = 1\nb = 2'));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
