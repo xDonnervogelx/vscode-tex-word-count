@@ -10,6 +10,7 @@ const {
   wordMilestones,
   fnv1a,
   luaChecksum,
+  findLuaBlocks,
 } = require('../wordcount');
 
 let passed = 0;
@@ -431,6 +432,36 @@ test('checksum ignores the whole annotation of a lua block', () => {
 test('changes the checksum with the code but not with the line endings', () => {
   assert.notStrictEqual(luaChecksum('local a = 1'), luaChecksum('local a = 2'));
   assert.strictEqual(luaChecksum('a = 1\r\nb = 2'), luaChecksum('a = 1\nb = 2'));
+});
+
+test('reports a lua block without annotation as missing', () => {
+  const src = 'Text.\n\\begin{luacode}\nx = 1\n\\end{luacode}';
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks.length, 1);
+  assert.strictEqual(blocks[0].status, 'missing');
+  assert.strictEqual(blocks[0].start, src.indexOf('\\begin'));
+  assert.strictEqual(blocks[0].end, src.length);
+});
+
+test('reports an annotation without checksum as unconfirmed', () => {
+  const src = '\\begin{luacode}\n-- words: 2\nx = 1\n\\end{luacode}';
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks[0].status, 'unconfirmed');
+  assert.strictEqual(blocks[0].announcedWords, 2);
+});
+
+test('reports ignored lua blocks of both forms as ignored', () => {
+  const src = [
+    '\\begin{luacode}\n-- ignore\nx = 1\n\\end{luacode}',
+    '\\directlua{--[[ ignore ]] x = 1}',
+  ].join('\n');
+  const blocks = findLuaBlocks(src);
+
+  assert.strictEqual(blocks.length, 2);
+  assert.strictEqual(blocks[0].status, 'ignored');
+  assert.strictEqual(blocks[1].status, 'ignored');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

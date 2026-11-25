@@ -164,6 +164,12 @@ const LUA_COMMAND_RE = new RegExp(
 const LUA_WORDS_RE = /--(?:\[\[)?\s*words:\s*(\d+)/;
 
 /**
+ * Matches the ignore marker of a Lua block, either as its own line
+ * (`-- ignore`) or in its bracket form (`--[[ ignore ]]`).
+ */
+const LUA_IGNORE_RE = /--\[\[\s*ignore\s*\]\]|^[ \t]*--[ \t]*ignore[ \t\r]*$/m;
+
+/**
  * Replaces a removed Lua block with the number of words announced in its
  * annotation. A block without an annotation is replaced as if it held no words.
  *
@@ -252,7 +258,8 @@ function luaChecksum(blockText) {
  * @param {string} text   The LaTeX text to process.
  * @param {RegExp} beginRe   Matches the beginning and captures the name in group 1.
  * @param {Object<string, number>} groupCounts   The number of braced groups to remove per name.
- * @param {string|function} gap   What the removed text is replaced with.
+ * @param {string|function} gap   What the removed text is replaced with. A
+ *        function receives the removed text and the index where it starts.
  * @returns {string}
  */
 function removeLeadingArguments(text, beginRe, groupCounts, gap) {
@@ -278,11 +285,59 @@ function removeLeadingArguments(text, beginRe, groupCounts, gap) {
     }
     const removedText = text.slice(beginMatch.index, removedUpTo);
     result += text.slice(copiedUpTo, beginMatch.index);
-    result += typeof gap === 'function' ? gap(removedText) : gap;
+    result += typeof gap === 'function' ? gap(removedText, beginMatch.index) : gap;
     copiedUpTo = removedUpTo;
     beginRe.lastIndex = removedUpTo;
   }
   return result + text.slice(copiedUpTo);
+}
+
+/**
+ * Describes a Lua block found in a text.
+ *
+ * @param {string} blockText   The text of the Lua block.
+ * @param {number} start   The index of the block in the text.
+ * @returns {{ start: number, end: number, status: string, announcedWords: number}}
+ *          The position of the block, its status and the words announced in
+ *          its annotation. The status is `ignored`, `unconfirmed` or `missing`.
+ */
+function describeLuaBlock(blockText, start) {
+  const announced = LUA_WORDS_RE.exec(blockText);
+  let status = 'missing';
+  if (LUA_IGNORE_RE.test(blockText)) {
+    status = 'ignored';
+  } else if (announced) {
+    status = 'unconfirmed';
+  }
+  return {
+    start,
+    end: start + blockText.length,
+    status,
+    announcedWords: announced ? Number(announced[1]) : 0,
+  };
+}
+
+/**
+ * Finds all Lua blocks of a text, that is the `luacode` environments and the
+ * braces of the Lua commands.
+ *
+ * @param {string} text   The LaTeX text to search in.
+ * @returns {Array<{ start: number, end: number, status: string, announcedWords: number}>}
+ *          The blocks in the order they appear in the text.
+ */
+function findLuaBlocks(text) {
+  const blocks = [];
+  const collectBlock = (blockText, start) => {
+    blocks.push(describeLuaBlock(blockText, start));
+    return blank(blockText);
+  };
+
+  for (const match of text.matchAll(LUA_ENVIRONMENT_RE)) {
+    collectBlock(match[0], match.index);
+  }
+  removeLeadingArguments(text, LUA_COMMAND_RE, LUA_COMMANDS, collectBlock);
+
+  return blocks.sort((first, second) => first.start - second.start);
 }
 
 /**
@@ -453,4 +508,5 @@ module.exports = {
   wordMilestones,
   fnv1a,
   luaChecksum,
+  findLuaBlocks,
 };
